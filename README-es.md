@@ -62,7 +62,7 @@ Notas:
 
 - Conoce `ssh` y lo básico de autenticación sin contraseña, vía `ssh-agent`, `ssh-add`, etc.
 
-- Administración de archivos básica: `ls` y `ls -l` (en particular, aprende el significado de cada columna en `ls -l`), `less`, `head`, `tail` y `tail -f` (o incluso mejor, `less +F`), `ln` y `ln -s` (aprende las diferencias y ventajas entre enlaces hard y soft), `chown`, `chmod`, `du` (para un resumen rápido del uso del disco: `du -hs *`). Para administración de archivos de sistema, `df`, `mount`, `fdisk`, `mkfs`, `lsblk`. Aprenda que un inode es `ls -i` or `df -i`).
+- Administración de archivos básica: `ls` y `ls -l` (en particular, aprende el significado de cada columna en `ls -l`), `less`, `head`, `tail` y `tail -f` (o incluso mejor, `less +F`), `ln` y `ln -s` (aprende las diferencias y ventajas entre enlaces hard y soft), `chown`, `chmod`, `du` (para un resumen rápido del uso del disco: `du -hs *`). Para administración de archivos de sistema, `df`, `mount`, `fdisk`, `mkfs`, `lsblk`. Aprenda que es un inode (`ls -i` o `df -i`).
 
 - Administración básica de redes: `ip` o `ifconfig`, `dig`.
 
@@ -113,26 +113,44 @@ Notas:
 
 - Usa `alias` para crear atajos para comandos comúnmente usados. Por ejemplo, `alias ll="las -latr"` crea el alias `ll`
 
-- En Bash scripts, usa `set -x` (o su variantes `set -v`, que registra las entradas sin procesar, incluyendo variables sin expander y comantarios) para depurar la salida. Usa el modo estricto al menos que tengas una buena razón para no hacerlo: Usa `set -e` para abortar en caso de errores (códigos de salida distintos a cero). Usa `set -u` para detectar uso de variables no definidas. Considera `set -o pipefail` también, para los errores con pipes, también (estudiar mas sobre este como un tema delicado). Para scripts más complejos, usa también `trap`. en EXIT o ERR. Un hábito útil es para comenzar un script como este, el cual detectará y abortará con errores comunes e imprimirá un mensaje:
+- Guarda alias, configuraciones de la shell y funciones que regularmente usas en `~/.bashrc`, y [configura los shells de inicio de sesión para que lo ejecuten](http://superuser.com/a/183980/7106). Esto hará que to configuración esté disponible en todas tus sesiones en la shell.
+
+- Pon las configuraciones de las variables de entorno, así como los comandos que deberían ejecutarse cuando inicias sesión en `~/.bash_profile`. Se necesitará una configuración separada para los shells que inicies desde sesiones en entornos gráficos y trabajos `cron`.
+
+- Sincroniza tus archivos de configuración (ej. `.bashrc` y `.bash_profile`) entre varios equipos con Git.
+
+- Entiende que se debe tener cuidado cuando las variables y nombres de archivos contienen espacios en blanco. Encierra tus variables de Bash entre comillas, ej. `"$FOO"`. Prefiere las opciones `-0` o `-print0` para habilitar que los caracteres nulos delimiten los nombres de los archivos, ej. `locate -0 pattern | xargs -0 ls -al` o `find / -print0 -type d | xargs -0 ls -al`. Para iterar sobre los nombres de los archivos que contienen espacios en blanco en el bucle `for`, configura tu IFS para que sea solo una nueva línea usando `IFS=$'\n'`.
+
+- En scripts de Bash, usa `set -x` (o su variantes `set -v`, que registra las entradas sin procesar, incluyendo variables sin expandir y comentarios) para depurar la salida. Usa el modo estricto al menos que tengas una buena razón para no hacerlo: Usa `set -e` para abortar en caso de errores (códigos de salida distintos a cero). Usa `set -u` para detectar uso de variables no definidas. Considera `set -o pipefail` también, para los errores con pipes, también (estudiar mas sobre este como un tema delicado). Para scripts más complejos, usa también `trap`. en EXIT o ERR. Un hábito útil es para comenzar un script como este, el cual detectará y abortará con errores comunes e imprimirá un mensaje:
 ```bash
     set -euo pipefail
     trap "echo 'error: Falló del Script: ver arriba comando que falló'" ERR
 ```
 
-- En Bash scripts, subshells (escritos con paréntesis) son maneras convenientes para agrupar los comandos. Un ejemplo común es temporalmente moverse hacia un directorio de trabajo diferente, Ej.
+- En scripts de Bash, subshells (escritos con paréntesis) son maneras convenientes para agrupar los comandos. Un ejemplo común es temporalmente moverse hacia un directorio de trabajo diferente, Ej.
 ```bash
       # do something in current dir
       (cd /some/other/dir && other-command)
       # continue in original dir
 ```
 
-- En Bash, considera que hay muchas formas de expansión de variables. Verificar la existencia de una variable: `${name:?error message}`. Por ejemplo, si un script Bash requiere un único argumento, solo escribe `input_file=${1:?usage: $0 input_file}`. Expansión aritmética: `i=$(( (i + 1) % 5 ))`. Secuencias: `{1..10}`. Reducción de cadenas de texto: `${var%suffix}` y `${var#prefix}`. Por ejemplo si `var=foo.pdf`, entonces `echo ${var%.pdf}.txt` imprime `foo.txt`.
+- En Bash, considera que hay muchas formas de expansión de variables. Verificar la existencia de una variable: `${name:?error message}`. Por ejemplo, si un script de Bash requiere un único argumento, solo escribe `input_file=${1:?usage: $0 input_file}`. Expansión aritmética: `i=$(( (i + 1) % 5 ))`. Secuencias: `{1..10}`. Reducción de cadenas de texto: `${var%suffix}` y `${var#prefix}`. Por ejemplo si `var=foo.pdf`, entonces `echo ${var%.pdf}.txt` imprime `foo.txt`.
 
 - Utilizando la expansión de corchetes `{`...`}` puede reducir el tener que retipear un texto similar y automatizar conbinaciones de elementos. Esto es útil en ejemplos como `mv foo.{txt,pdf} some-dir` (el cual mueve ambos archivos), `cp somefile{,.bak}` (el cual se expandirá a `cp somefile somefile.bak`) o `mkdir -p test-{a,b,c}/subtest-{1,2,3}` (el cual se expandirá en todas las posibles conbinaciones y creará un árbol de directorios).
+
+- El orden de las expansiones es: expansión de llaves; expansion de tilde (`~`), expansión de parámetros y variables, expansión aritmética y sustitución de comandos (realizado de izquierda a derecha); separación de palabras; y expansión de nombres de archivos. (Por ejemplo, un rango como `{1..20}` no puede ser expresado con variables usando `{$a..$b}`. Usa `seq` o un bucle `for`, ej. `seq $a $b` o `for((i=a; i<=b; i++)); do ... ; done`).
+
 
 - La salida de un comando puede ser tratado como un archivo por medio de `<(some command)`. Por ejemplo, comparar el `/etc/hosts` local con uno remoto:
 ```sh
       diff /etc/hosts <(ssh somehost cat /etc/hosts)
+```
+
+- Al escribir scripts, puede que quieras poner todo tu código entre llaves. Si falta la llave de cierre, tu script no se ejecutará debido a un error de sintaxis. Esto tiene sentido cuando tu script va a ser descargado desde la web, ya que evita que scripts descargados parcialmente se ejecuten.
+```sh
+{
+    # Tu código va a aquí
+}
 ```
 
 - Conocer acerca de "here documents" en Bash, como también de `cat <<EOF ...`.
@@ -141,7 +159,7 @@ Notas:
 
 - Usa `man ascii` para una buena tabla ASCII con valores hexadecimal y decimales. Para información de codificación general, `man unicode`, `man utf-8`, y `man latin1` son de utilidad.
 
-- Usa `screen` o [`tmux`](https://tmux.github.io/) para multiplexar la pantalla, especialmente útil en sesiones ssh remotas y para desconectar y reconectar a una sesión. `byobu` puede mejorar la pantalla o tmux proporcionando mayor información y gestión ás sencilla. Una alternativa más minimalista para persistencia de la sesión solo sería `dtach`.
+- Usa `screen` o [`tmux`](https://tmux.github.io/) para multiplexar la pantalla, especialmente útil en sesiones ssh remotas y para desconectar y reconectar a una sesión. `byobu` puede mejorar la pantalla o tmux proporcionando mayor información y gestión más sencilla. Una alternativa más minimalista para persistencia de la sesión solo sería `dtach`.
 
 - En ssh, saber cómo hacer un port tunnel con `-L` o `-D` (y de vez en cuando `-R`) es útil, Ej. para acceder a sitios web desde un servidor remoto.
 
@@ -156,7 +174,7 @@ Notas:
       ControlPersist yes
 ```
 
-- Algunas otras opciones relevantes a ssh son sensibles en cuanto a seguridad y deben ser usadas con cuidado, Ej. por subnet, host o en redes confiables: `StrictHostKeyChecking=no`, `ForwardAgent=yes`.
+- Algunas otras opciones relevantes a ssh son sensibles en cuanto a seguridad y deben ser usadas con cuidado, ej. por subnet, host o en redes confiables: `StrictHostKeyChecking=no`, `ForwardAgent=yes`.
 
 - Considera [`mosh`](https://mosh.org/) una alternativa para ssh que utiliza UDP, evitando conexiones caidas y agregando conveniencia en el camino. (require configuración del lado del servidor).
 
